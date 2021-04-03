@@ -6,9 +6,11 @@ const dbName = 'test-' + currentDate.getTime() + '.fdb';
 
 exports.default = {
     database: path.join(process.env.FIREBIRD_DATA || testDir, dbName),
+    // database: '/home/dev/test/' + dbName,
     host: '127.0.0.1',
+    // host: '192.168.245.227',
     port: 3050,
-    user: 'sysdba',
+    user: 'SYSDBA',
     password: 'masterkey',
     role: null,
     pageSize: 4096,

@@ -19,6 +19,15 @@ describe('Connection', function () {
         });
     });
 
+    it('should attach', function (done) {
+        Firebird.attach(config, function (err, db) {
+            assert.ok(!err, err);
+
+            db.detach();
+            done();
+        });
+    });
+
     it('should reconnect when socket is closed', function (done) {
         Firebird.attach(config, function (err, db) {
             assert.ok(!err, err);
@@ -52,6 +61,16 @@ describe('Connection', function () {
 });
 
 describe('Auth plugin connection', function () {
+
+    it('should attach with invalid plugin', function (done) {
+        Firebird.attachOrCreate(Config.extends(config, { pluginName: 'Bad plugin' }), function (err, db) {
+            assert.ok(err, err);
+            assert.ok(err.message === 'Invalide auth plugin \'Bad plugin\'');
+
+            // db.detach();
+            done();
+        });
+    });
 
     // Must be test with firebird 2.5 or higher with Legacy_Auth enabled on server
     it('should attach with lagacy plugin', function (done) {
@@ -104,6 +123,35 @@ describe('Auth plugin connection', function () {
                 done();
             });
         });*/
+    });
+});
+
+describe('Wire crypt', function() {
+    it('should attach with wire crypt disable', function(done) {
+        Firebird.attachOrCreate(Config.extends(config, { wireCrypt: Firebird.WIRE_CRYPT_DISABLED }), function (err, db) {
+            assert.ok(!err, err);
+
+            db.detach();
+            done();
+        });
+    });
+
+    it('should attach with wire crypt enable', function(done) {
+        Firebird.attachOrCreate(Config.extends(config, { }), function (err, db) {
+            assert.ok(!err, err.message);
+
+            db.detach();
+            done();
+        });
+    });
+
+    it('should attach with wire crypt require', function(done) {
+        Firebird.attachOrCreate(Config.extends(config, { wireCrypt: Firebird.WIRE_CRYPT_REQUIRED }), function (err, db) {
+            assert.ok(!err, err.error.message);
+
+            db.detach();
+            done();
+        });
     });
 });
 

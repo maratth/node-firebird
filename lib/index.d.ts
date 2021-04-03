@@ -13,8 +13,8 @@ declare module 'node-firebird' {
     export const AUTH_PLUGIN_SRP: string;
     export const AUTH_PLUGIN_SRP256: string;
 
-    export const WIRE_CRYPT_ENABLE: number;
-    export const WIRE_CRYPT_DISABLE: number;
+    export const WIRE_CRYPT_ENABLED: number;
+    export const WIRE_CRYPT_DISABLED: number;
 
     export const ISOLATION_READ_UNCOMMITTED: number[];
     export const ISOLATION_READ_COMMITED: number[];
