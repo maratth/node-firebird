@@ -377,6 +377,12 @@ describe('Test Service', () => {
     });
 
     describe('Backup/Restaure', () => {
+        /**
+         * Check backup file only in local envirnment, 
+         * because in remote or docker envinment can't check backup file existing or not.
+         */
+        const checkBackupFile = config.localEnvironment;
+
         it('should backup', done => {
             const BACKUP_OPTS = {
                 database: DATABASE.database,
@@ -394,7 +400,9 @@ describe('Test Service', () => {
 
                     data.on('data', () => {});
                     data.on('end', () => {
-                        assert.ok(fs.existsSync(path.resolve(BACKUP_OPTS.files[0].filename)));
+                        if (checkBackupFile) {
+                            assert.ok(fs.existsSync(path.resolve(BACKUP_OPTS.files[0].filename)));   
+                        }
                         srv.detach(done);
                     });
                 });
@@ -418,7 +426,9 @@ describe('Test Service', () => {
 
                     data.on('data', () => {});
                     data.on('end', () => {
-                        assert.ok(fs.existsSync(path.resolve(RESTORE_OPTS.database)));
+                        if (checkBackupFile) {
+                            assert.ok(fs.existsSync(path.resolve(RESTORE_OPTS.database)));
+                        }
                         srv.detach(done);
                     });
                 });
@@ -438,7 +448,9 @@ describe('Test Service', () => {
                     assert.ok(!err, err);
                     assert.ok(data instanceof stream.Readable);
 
-                    assert.ok(fs.existsSync(path.resolve(BACKUP_OPTS.file)));
+                    if (checkBackupFile) {
+                        assert.ok(fs.existsSync(path.resolve(BACKUP_OPTS.file)));
+                    }
                     srv.detach(done);
                 });
             });
@@ -459,7 +471,9 @@ describe('Test Service', () => {
                     assert.ok(!err, err);
                     assert.ok(data instanceof stream.Readable);
 
-                    assert.ok(fs.existsSync(path.resolve(RESTORE_OPTS.database)));
+                    if (checkBackupFile) {
+                        assert.ok(fs.existsSync(path.resolve(RESTORE_OPTS.database)));
+                    }
                     srv.detach(done);
                 });
             });
