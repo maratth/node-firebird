@@ -33,6 +33,8 @@ exports.extends = function(base, args) {
  * Check if node-firebird tests run in local environment.
  */
 function localEnvironement() {
-    return (config.host === '127.0.0.1' || config.host === 'localhost') && !fs.existsSync('/.dockerenv');
+    return (config.host === '127.0.0.1' || config.host === 'localhost') 
+    && !fs.existsSync('/.dockerenv')
+    && !process.env.CI;
 }
 
