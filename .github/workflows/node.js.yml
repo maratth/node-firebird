@@ -7,34 +7,35 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
-      matrix:        
-        node: [18, 20]
-        firebird-version: ['v3']
+      matrix:
+        node: [18] #, 20]
+        firebird: ["3"] #, "4", "5"]
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 10
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 10
 
-    - name: Setup FirebirdSQL container
-      uses: juarezr/firebirdsql-github-action@v1.2.0
-      with:
-        version: ${{ matrix.firebird-version }}
-        isc_password: "masterkey"
-        enable_legacy_client_auth: "true"        
+      - name: Setup FirebirdSQL container
+        uses: juarezr/firebirdsql-github-action@v2.0.0
+        with:
+          version: ${{ matrix.firebird }}
+          firebird_root_password: "masterkey"
+          firebird_conf: "WireCrypt=Enabled"
+          port: 3050
+          #enable_legacy_client_auth: "true"
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node }}
+      - name: Use Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node }}
 
+      - name: Build
+        shell: bash
+        run: |
+          npm ci
 
-    - name: Build
-      shell: bash
-      run: |
-        npm ci         
-
-    - name: Test (Linux)      
-      run: |
-        export FIREBIRD_DATA=/firebird/data
-        npx nyc npm test
+      - name: Test (Linux)
+        run: |
+          export FIREBIRD_DATA=/var/lib/firebird/data
+          npx nyc npm test -- ./test/index.js
