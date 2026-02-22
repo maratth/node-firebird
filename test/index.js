@@ -272,13 +272,30 @@ describe('Database', function() {
         it('should create table', async function () {
             await fromCallback(cb => db.query('CREATE TABLE T (ID INT)', cb));
         });
+    });
 
-        it('should query with sufficient timeout', { skip: protocolVersion < Const.PROTOCOL_VERSION16 }, async function () {
-            await fromCallback(cb => db.query('SELECT * FROM RDB$RELATIONS FOR UPDATE', { timeout: 1 }, cb));
+    describe('Statement timeout', function(ctx) {
+        const skip = protocolVersion < Const.PROTOCOL_VERSION16; // Statement timeout available from protocol v16
+
+        it('should query with sufficient timeout', { skip }, async function (test) {
+            await fromCallback(cb => db.query('SELECT * FROM RDB$RELATIONS FOR UPDATE', cb, { timeout: 10 }));
         });
 
-        it('should query with sufficient timeout', { skip: protocolVersion < Const.PROTOCOL_VERSION16 }, async function () {
-            await fromCallback(cb => db.query('SELECT * FROM RDB$RELATIONS FOR UPDATE', { timeout: 1000 }, cb));
+        it('should query throw timeout', { skip }, async function (test) {
+            await assert.rejects(async () => {
+                await fromCallback(cb => db.query('EXECUTE BLOCK AS BEGIN WHILE(0=0) DO BEGIN END END', cb, { timeout: 1000 }));
+            }, /Operation was cancelled, Statement level timeout expired/);
+        });
+
+        it('should execute with sufficient timeout', { skip }, async function (test) {
+            await fromCallback(cb => db.execute('SELECT * FROM RDB$RELATIONS FOR UPDATE', cb, { timeout: 10 }));
+        });
+
+        it('should execute throw timeout', { skip }, async function (test) {
+
+            await assert.rejects(async () => {
+                await fromCallback(cb => db.execute('EXECUTE BLOCK AS BEGIN WHILE(0=0) DO BEGIN END END', cb, { timeout: 1000 }));
+            }, /Operation was cancelled, Statement level timeout expired/);
         });
     });
 
