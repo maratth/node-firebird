@@ -1,4 +1,5 @@
 const Firebird = require('../lib');
+const Const = require('../lib/wire/const');
 const { GDSCode } = require('../lib/gdscodes');
 const Config = require('./config');
 
@@ -237,9 +238,11 @@ describe('Database', function() {
     var blobPath = path.join(Config.testDir, 'image.png');
     var blobSize = fs.readFileSync(blobPath).length;
     var db;
+    var protocolVersion;
 
     beforeAll(async function() {
         db = await fromCallback(cb => Firebird.attachOrCreate(config, cb));
+        protocolVersion = db.connection.accept.protocolVersion;
         await fromCallback(cb => db.query(TEST_TABLE, cb));
     });
 
@@ -268,6 +271,14 @@ describe('Database', function() {
 
         it('should create table', async function () {
             await fromCallback(cb => db.query('CREATE TABLE T (ID INT)', cb));
+        });
+
+        it('should query with sufficient timeout', { skip: protocolVersion < Const.PROTOCOL_VERSION16 }, async function () {
+            await fromCallback(cb => db.query('SELECT * FROM RDB$RELATIONS FOR UPDATE', { timeout: 1 }, cb));
+        });
+
+        it('should query with sufficient timeout', { skip: protocolVersion < Const.PROTOCOL_VERSION16 }, async function () {
+            await fromCallback(cb => db.query('SELECT * FROM RDB$RELATIONS FOR UPDATE', { timeout: 1000 }, cb));
         });
     });
 
