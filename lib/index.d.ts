@@ -45,12 +45,31 @@ declare module 'node-firebird' {
         timeout: number;
     }
 
+    export interface BatchError {
+        row: number;
+        message: string;
+        status: any[];
+    }
+
+    export interface BatchResult {
+        updated: number[];
+        errors: BatchError[];
+        affectedRows: number;
+        hasErrors: boolean;
+    }
+
+    export type BatchOptions = {
+        multierror?: boolean;
+        bufferSize?: number;
+    };
+
     export interface Database {
         detach(callback?: SimpleCallback): Database;
         transaction(options: TransactionOptions|Isolation|TransactionCallback, callback?: TransactionCallback): Database;
         query(query: string, params: any[], callback: QueryCallback, options?: QueryOptions): Database;
         execute(query: string, params: any[], callback: QueryCallback, options?: QueryOptions): Database;
         sequentially(query: string, params: any[], rowCallback: SequentialCallback, callback: SimpleCallback, options?: QueryOptions | boolean): Database;
+        executeBatch(query: string, paramsArray: any[][], callback: (err: any, result: BatchResult) => void, options?: BatchOptions): Database;
         drop(callback: SimpleCallback): void;
         escape(value: any): string;
         attachEvent(callback: any): this;
@@ -60,6 +79,7 @@ declare module 'node-firebird' {
         query(query: string, params: any[], callback: QueryCallback, options?: QueryOptions): void;
         execute(query: string, params: any[], callback: QueryCallback, options?: QueryOptions): void;
         sequentially(query: string, params: any[], rowCallback: SequentialCallback, callback: SimpleCallback, options?: QueryOptions | boolean): Database;
+        executeBatch(query: string, paramsArray: any[][], callback: (err: any, result: BatchResult) => void, options?: BatchOptions): void;
         commit(callback?: SimpleCallback): void;
         commitRetaining(callback?: SimpleCallback): void;
         rollback(callback?: SimpleCallback): void;
