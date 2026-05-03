@@ -338,6 +338,22 @@ describe('Database', function() {
                 cb));
         });
 
+        it('should insert multiple values with returning', async function ({ skip }) {
+            if (db.connection.accept.protocolVersion < Const.PROTOCOL_VERSION18) {
+                skip("Need protocol 18 or more");
+            }
+
+            const rows = await fromCallback(cb => db.query(
+              'INSERT INTO test (ID, NAME, CREATED, PARENT) SELECT ID * 10, NAME, CREATED, PARENT FROM test RETURNING ID',
+              cb));
+
+            assert.equal(rows[0]['id'], 10);
+            assert.equal(rows[1]['id'], 12);
+            assert.equal(rows[2]['id'], 13);
+            assert.equal(rows[3]['id'], 14);
+            assert.equal(rows[4]['id'], 15);
+        });
+
         describe('verify', function () {
             it('should select data from inserts', async function () {
                 const rows = await fromCallback(cb => db.query('SELECT * FROM test', cb));
