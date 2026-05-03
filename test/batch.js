@@ -6,21 +6,18 @@
 
 const Const = require('../lib/wire/const');
 const { XdrWriter, XdrReader } = require('../lib/wire/serialize');
-const Xsql = require('../lib/wire/xsqlvar');
 const Connection = require('../lib/wire/connection');
 const Transaction = require('../lib/wire/transaction');
 const Database = require('../lib/wire/database');
 
 const { buildBPB, encodeBatchField } = Connection;
 
-// Build an SQLVar instance of the given type with optional extra properties
-function meta(Cls, props) {
-    const m = new Cls();
-    if (props) Object.assign(m, props);
-    return m;
+// Build a plain sqlvar descriptor with optional extra properties
+function meta(type, props) {
+    return Object.assign({ type }, props);
 }
 
-// Encode a single field via the SQLVar's encodeBatch and return an XdrReader
+// Encode a single field via encodeBatchField and return an XdrReader
 function encodeField(value, sqlvar) {
     const msg = new XdrWriter(256);
     encodeBatchField(msg, value, sqlvar);
@@ -120,32 +117,32 @@ describe('buildBPB', function () {
 describe('encodeBatchField', function () {
     describe('SQL_SHORT / SQL_LONG', function () {
         it('should encode an integer value with null=0', function () {
-            const r = encodeField(42, meta(Xsql.SQLVarShort));
+            const r = encodeField(42, meta(Const.SQL_SHORT));
             expect(r.readInt()).toBe(42);
             expect(r.readInt()).toBe(0);
         });
 
         it('should encode null with null indicator=1', function () {
-            const r = encodeField(null, meta(Xsql.SQLVarInt));
+            const r = encodeField(null, meta(Const.SQL_LONG));
             expect(r.readInt()).toBe(0);
             expect(r.readInt()).toBe(1);
         });
 
         it('should truncate float to integer', function () {
-            const r = encodeField(3.9, meta(Xsql.SQLVarShort));
+            const r = encodeField(3.9, meta(Const.SQL_SHORT));
             expect(r.readInt()).toBe(3);
         });
     });
 
     describe('SQL_FLOAT', function () {
         it('should encode a float value with null=0', function () {
-            const r = encodeField(1.5, meta(Xsql.SQLVarFloat));
+            const r = encodeField(1.5, meta(Const.SQL_FLOAT));
             expect(r.readFloat()).toBeCloseTo(1.5, 5);
             expect(r.readInt()).toBe(0);
         });
 
         it('should encode null with null indicator=1', function () {
-            const r = encodeField(null, meta(Xsql.SQLVarFloat));
+            const r = encodeField(null, meta(Const.SQL_FLOAT));
             r.readFloat();
             expect(r.readInt()).toBe(1);
         });
@@ -153,13 +150,13 @@ describe('encodeBatchField', function () {
 
     describe('SQL_DOUBLE', function () {
         it('should encode a double with null=0', function () {
-            const r = encodeField(3.14159265358979, meta(Xsql.SQLVarDouble));
+            const r = encodeField(3.14159265358979, meta(Const.SQL_DOUBLE));
             expect(r.readDouble()).toBeCloseTo(3.14159265358979, 14);
             expect(r.readInt()).toBe(0);
         });
 
         it('should encode null with null indicator=1', function () {
-            const r = encodeField(null, meta(Xsql.SQLVarDouble));
+            const r = encodeField(null, meta(Const.SQL_DOUBLE));
             r.readDouble();
             expect(r.readInt()).toBe(1);
         });
@@ -167,13 +164,13 @@ describe('encodeBatchField', function () {
 
     describe('SQL_INT64', function () {
         it('should encode a 64-bit integer', function () {
-            const r = encodeField(1234567890, meta(Xsql.SQLVarInt64));
+            const r = encodeField(1234567890, meta(Const.SQL_INT64));
             expect(r.readInt64()).toBe(1234567890);
             expect(r.readInt()).toBe(0);
         });
 
         it('should encode null', function () {
-            const r = encodeField(null, meta(Xsql.SQLVarInt64));
+            const r = encodeField(null, meta(Const.SQL_INT64));
             r.readInt64();
             expect(r.readInt()).toBe(1);
         });
@@ -181,19 +178,19 @@ describe('encodeBatchField', function () {
 
     describe('SQL_BOOLEAN', function () {
         it('should encode true as 1', function () {
-            const r = encodeField(true, meta(Xsql.SQLVarBoolean));
+            const r = encodeField(true, meta(Const.SQL_BOOLEAN));
             expect(r.readInt()).toBe(1);
             expect(r.readInt()).toBe(0);
         });
 
         it('should encode false as 0', function () {
-            const r = encodeField(false, meta(Xsql.SQLVarBoolean));
+            const r = encodeField(false, meta(Const.SQL_BOOLEAN));
             expect(r.readInt()).toBe(0);
             expect(r.readInt()).toBe(0);
         });
 
         it('should encode null', function () {
-            const r = encodeField(null, meta(Xsql.SQLVarBoolean));
+            const r = encodeField(null, meta(Const.SQL_BOOLEAN));
             expect(r.readInt()).toBe(0);
             expect(r.readInt()).toBe(1);
         });
@@ -201,14 +198,14 @@ describe('encodeBatchField', function () {
 
     describe('SQL_BLOB / SQL_ARRAY / SQL_QUAD', function () {
         it('should encode a blob OID {high, low}', function () {
-            const r = encodeField({ high: 1, low: 42 }, meta(Xsql.SQLVarBlob));
+            const r = encodeField({ high: 1, low: 42 }, meta(Const.SQL_BLOB));
             expect(r.readInt()).toBe(1);
             expect(r.readInt()).toBe(42);
             expect(r.readInt()).toBe(0);
         });
 
         it('should encode null blob as zeros with null=1', function () {
-            const r = encodeField(null, meta(Xsql.SQLVarBlob));
+            const r = encodeField(null, meta(Const.SQL_BLOB));
             expect(r.readInt()).toBe(0);
             expect(r.readInt()).toBe(0);
             expect(r.readInt()).toBe(1);
@@ -218,7 +215,7 @@ describe('encodeBatchField', function () {
     describe('SQL_TEXT (CHAR – fixed length)', function () {
         it('should write padded buffer of declared length', function () {
             const maxLen = 8;
-            const r = encodeField('Hi', meta(Xsql.SQLVarText, { length: maxLen }));
+            const r = encodeField('Hi', meta(Const.SQL_TEXT, { length: maxLen }));
             const buf = r.readBuffer(maxLen); // reads maxLen bytes, aligns
             expect(buf.toString('utf8', 0, 2)).toBe('Hi');
             expect(buf[2]).toBe(0x20); // space padding
@@ -227,14 +224,14 @@ describe('encodeBatchField', function () {
 
         it('should truncate values exceeding declared length', function () {
             const maxLen = 4;
-            const r = encodeField('Hello', meta(Xsql.SQLVarText, { length: maxLen }));
+            const r = encodeField('Hello', meta(Const.SQL_TEXT, { length: maxLen }));
             const buf = r.readBuffer(maxLen);
             expect(buf.toString('utf8', 0, 4)).toBe('Hell');
         });
 
         it('should encode null as all-spaces buffer with null=1', function () {
             const maxLen = 4;
-            const r = encodeField(null, meta(Xsql.SQLVarText, { length: maxLen }));
+            const r = encodeField(null, meta(Const.SQL_TEXT, { length: maxLen }));
             const buf = r.readBuffer(maxLen);
             expect(buf.every(b => b === 0x20)).toBe(true);
             expect(r.readInt()).toBe(1);
@@ -244,7 +241,7 @@ describe('encodeBatchField', function () {
     describe('SQL_VARYING (VARCHAR)', function () {
         it('should write 2-byte length prefix + data padded to declared length', function () {
             const maxLen = 10;
-            const r = encodeField('Test', meta(Xsql.SQLVarString, { length: maxLen }));
+            const r = encodeField('Test', meta(Const.SQL_VARYING, { length: maxLen }));
             const buf = r.readBuffer(2 + maxLen);
             const actualLen = buf.readUInt16BE(0);
             expect(actualLen).toBe(4);
@@ -254,7 +251,7 @@ describe('encodeBatchField', function () {
 
         it('should encode null as zero bytes with null=1', function () {
             const maxLen = 6;
-            const r = encodeField(null, meta(Xsql.SQLVarString, { length: maxLen }));
+            const r = encodeField(null, meta(Const.SQL_VARYING, { length: maxLen }));
             const buf = r.readBuffer(2 + maxLen);
             expect(buf.readUInt16BE(0)).toBe(0);
             expect(r.readInt()).toBe(1);
@@ -262,7 +259,7 @@ describe('encodeBatchField', function () {
 
         it('should truncate values exceeding declared length', function () {
             const maxLen = 3;
-            const r = encodeField('Hello', meta(Xsql.SQLVarString, { length: maxLen }));
+            const r = encodeField('Hello', meta(Const.SQL_VARYING, { length: maxLen }));
             const buf = r.readBuffer(2 + maxLen);
             expect(buf.readUInt16BE(0)).toBe(3);
         });
@@ -271,7 +268,7 @@ describe('encodeBatchField', function () {
     describe('SQL_TIMESTAMP', function () {
         it('should encode a Date value', function () {
             const d = new Date('2024-01-15T10:30:00.000Z');
-            const r = encodeField(d, meta(Xsql.SQLVarTimeStamp));
+            const r = encodeField(d, meta(Const.SQL_TIMESTAMP));
             const date = r.readInt();
             const time = r.readUInt();
             const nullInd = r.readInt();
@@ -281,7 +278,7 @@ describe('encodeBatchField', function () {
         });
 
         it('should encode null timestamp', function () {
-            const r = encodeField(null, meta(Xsql.SQLVarTimeStamp));
+            const r = encodeField(null, meta(Const.SQL_TIMESTAMP));
             r.readInt(); r.readUInt();
             expect(r.readInt()).toBe(1);
         });
@@ -290,13 +287,13 @@ describe('encodeBatchField', function () {
     describe('SQL_TYPE_DATE', function () {
         it('should encode date days', function () {
             const d = new Date('2000-01-01T00:00:00.000Z');
-            const r = encodeField(d, meta(Xsql.SQLVarDate));
+            const r = encodeField(d, meta(Const.SQL_TYPE_DATE));
             expect(r.readInt()).toBeGreaterThan(0);
             expect(r.readInt()).toBe(0);
         });
 
         it('should encode null date', function () {
-            const r = encodeField(null, meta(Xsql.SQLVarDate));
+            const r = encodeField(null, meta(Const.SQL_TYPE_DATE));
             r.readInt();
             expect(r.readInt()).toBe(1);
         });
@@ -305,13 +302,13 @@ describe('encodeBatchField', function () {
     describe('SQL_TYPE_TIME', function () {
         it('should encode time fractions', function () {
             const d = new Date('2000-01-01T12:00:00.000Z');
-            const r = encodeField(d, meta(Xsql.SQLVarTime));
+            const r = encodeField(d, meta(Const.SQL_TYPE_TIME));
             expect(r.readUInt()).toBeGreaterThanOrEqual(0);
             expect(r.readInt()).toBe(0);
         });
 
         it('should encode null time', function () {
-            const r = encodeField(null, meta(Xsql.SQLVarTime));
+            const r = encodeField(null, meta(Const.SQL_TYPE_TIME));
             r.readUInt();
             expect(r.readInt()).toBe(1);
         });
